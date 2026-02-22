@@ -116,7 +116,7 @@ if not st.session_state.logged_in:
                 <img src="https://raw.githubusercontent.com/mfgssw-ops/smart-pharmacy-ssw/main/SSW_Logo.jpg" class="header-logo">
                 <h1 class="header-title">Smart Extemp Inventory</h1>
             </div>
-            <p style='text-align:center; color:#666; font-size:18px; margin-top:-5px; margin-bottom:30px;'>กลุ่มงานเภสัชกรรม โรงพยาบาลศรีสังวรสุโขทัย</p>
+            <p style='font-weight: bold;'text-align:center; color:#666; font-size:18px; margin-top:-5px; margin-bottom:30px;'>  กลุ่มงานเภสัชกรรม โรงพยาบาลศรีสังวรสุโขทัย</p>
         """, unsafe_allow_html=True)
         
         if client is None: st.error("⚠️ ไม่พบไฟล์เชื่อมต่อฐานข้อมูล")
