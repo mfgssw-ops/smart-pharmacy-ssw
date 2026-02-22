@@ -203,7 +203,7 @@ else:
             st.session_state.logged_in = False
             st.rerun()
 
-    st.markdown('<h1 style="color:#2E8B57;">Smart Extemp Inventory</h1><p style="color:#666; font-size:18px;">ระบบบริหารจัดการยาเตรียมเฉพาะราย โรงพยาบาลศรีสังวรสุโขทัย</p>', unsafe_allow_html=True)
+    st.markdown('<h1 style="color:#2E8B57;">Smart Extemp Inventory</h1><p style="color:#666; font-size:18px;">ระบบบริหารจัดการยาเตรียมเฉพาะราย กลุ่มงานเภสัชกรรม โรงพยาบาลศรีสังวรสุโขทัย</p>', unsafe_allow_html=True)
 
     if not selected_wards:
         st.warning("⚠️ กรุณาติ๊กเลือกหน่วยงานที่แถบด้านซ้ายอย่างน้อย 1 แห่ง เพื่อแสดงข้อมูลค่ะ")
