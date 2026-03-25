@@ -227,18 +227,29 @@ else:
                     st.markdown(f"<div class='alert-box' style='background-color:{c};'><b>{r['Drug_Name']}</b> ({r['Batch_ID']}) - เหลือ {int(r['Days_Left'])} วัน 📍 {r['Location']}</div>", unsafe_allow_html=True)
 
             with col_alert2:
-                st.markdown("<div class='custom-subheader'>❄️ เตือนละลายยา (Frozen -> Cold)</div>", unsafe_allow_html=True)
-                if 'Type' in filtered.columns:
-                    f_items = filtered[(filtered['Type'] == 'Frozen') & (filtered['Status'] == 'Frozen') & (filtered['Record_Status'] == 'In_Stock')]
-                    if f_items.empty: st.success("✅ ไม่มีรายการยาแช่แข็งที่ต้องละลาย")
-                    for idx, r in f_items.iterrows():
-                        if st.button(f"💧 นำออกตู้แช่: {r['Drug_Name']} ({r['Batch_ID']})", key=f"thaw_{r['Batch_ID']}"):
-                            match = re.search(r'\d+', str(r.get('BUD_Cold', 0)))
-                            bud = int(match.group()) if match else 7 
-                            new_exp = today + timedelta(days=bud)
-                            # อัปเดตผ่าน Index เพื่อความปลอดภัย
-                            stock.loc[idx, ['Status', 'Expiry_Date', 'Action_By']] = ['Thawed', new_exp.strftime('%Y-%m-%d'), st.session_state.user_name]
-                            save_data(stock, 'stock'); st.success(f"คำนวณวันหมดอายุใหม่สำเร็จ!"); st.rerun()
+            st.markdown("#### ❄️ แจ้งเตือนละลายยา")
+            if 'Type' in filtered.columns and not filtered.empty:
+                f_items = filtered[(filtered['Type'] == 'Frozen') & (filtered['Status'] == 'Frozen')]
+                
+                f_alerts = f_items[f_items['Days_Left'] <= 3].sort_values('Days_Left')
+                if not f_alerts.empty:
+                    for _, r in f_alerts.iterrows():
+                        if r['Days_Left'] < 0:
+                            st.markdown(f"<div style='color:#D32F2F; font-size:14px; font-weight:bold;'>❌ เลยกำหนด: {r['Drug_Name']}</div>", unsafe_allow_html=True)
+                        else:
+                            st.markdown(f"<div style='color:#F57C00; font-size:14px; font-weight:bold;'>⚠️ เหลือ {r['Days_Left']} วัน: {r['Drug_Name']}</div>", unsafe_allow_html=True)
+                
+                if not f_items.empty:
+                    thaw_sel = st.selectbox("เลือกยาที่ต้องการละลาย:", f_items.apply(lambda x: f"{x['Drug_Name']} (Batch: {x['Batch_ID']})", axis=1), index=None, key="thaw_sel")
+                    if thaw_sel:
+                        t_bid = thaw_sel.split("Batch: ")[1].split(")")[0]
+                        if st.button("💧 ยืนยันละลายยา", type="primary", use_container_width=True):
+                            t_row = stock[stock['Batch_ID']==t_bid].iloc[0]
+                            bud = int(t_row['BUD_Thawed']) if str(t_row['BUD_Thawed']).isdigit() else 0
+                            stock.loc[stock['Batch_ID']==t_bid, ['Status', 'Expiry_Date']] = ['Thawed', today + timedelta(days=bud)]
+                            save_data(stock, 'stock'); st.success("ละลายยาสำเร็จ!"); st.rerun()
+                else: st.info("ไม่มียาแช่แข็งรอละลาย")
+            else: st.info("ไม่มียาแช่แข็งในระบบ")
 
             st.markdown("<div class='custom-header'>📦 ภาพรวมสต็อกยาปัจจุบัน</div>", unsafe_allow_html=True)
             active_stock = filtered[filtered['Record_Status'] == 'In_Stock']
