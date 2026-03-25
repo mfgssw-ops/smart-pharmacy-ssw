@@ -1,3 +1,6 @@
+# ==========================================
+# จุดเริ่มต้นของโค้ด (ก๊อปปี้ตั้งแต่บรรทัดนี้ลงไปครับ)
+# ==========================================
 import streamlit as st
 import pandas as pd
 import altair as alt
@@ -87,17 +90,29 @@ else:
     drugs, stock, locs, config = load_data()
     today = datetime.now()
     
-    if not stock.empty:
-        stock['Expiry_Date'] = pd.to_datetime(stock['Expiry_Date'], errors='coerce')
-        stock['Date_Produced'] = pd.to_datetime(stock['Date_Produced'], errors='coerce') 
-        stock['Days_Left'] = (stock['Expiry_Date'] - pd.Timestamp(today.date())).dt.days
-        stock['Qty'] = pd.to_numeric(stock['Qty'], errors='coerce').fillna(0)
-        
-        if not drugs.empty:
-            stock = stock.drop(columns=['Unit_Cost', 'Type', 'BUD_Thawed'], errors='ignore')
-            stock = stock.merge(drugs[['Drug_Name', 'Unit_Cost', 'Type', 'BUD_Thawed']], on='Drug_Name', how='left')
-            stock['Unit_Cost'] = pd.to_numeric(stock['Unit_Cost'], errors='coerce').fillna(0)
-            stock['Total_Value'] = stock['Qty'] * stock['Unit_Cost']
+    # 🛡️ เกราะป้องกัน: ถ้าตารางว่างเปล่า ให้สร้างโครงสร้างคอลัมน์หลอกขึ้นมากันแอปพัง
+    if stock.empty:
+        stock = pd.DataFrame(columns=['Date_Produced', 'Drug_Name', 'Batch_ID', 'Qty', 'Expiry_Date', 'Location', 'Status', 'Is_Saved'])
+    if locs.empty:
+        locs = pd.DataFrame(columns=['Location'])
+    
+    # เตรียมข้อมูลวันที่และตัวเลข
+    stock['Expiry_Date'] = pd.to_datetime(stock['Expiry_Date'], errors='coerce')
+    stock['Date_Produced'] = pd.to_datetime(stock['Date_Produced'], errors='coerce') 
+    stock['Days_Left'] = (stock['Expiry_Date'] - pd.Timestamp(today.date())).dt.days
+    stock['Qty'] = pd.to_numeric(stock['Qty'], errors='coerce').fillna(0)
+    
+    if not drugs.empty:
+        stock = stock.drop(columns=['Unit_Cost', 'Type', 'BUD_Thawed'], errors='ignore')
+        stock = stock.merge(drugs[['Drug_Name', 'Unit_Cost', 'Type', 'BUD_Thawed']], on='Drug_Name', how='left')
+        stock['Unit_Cost'] = pd.to_numeric(stock['Unit_Cost'], errors='coerce').fillna(0)
+        stock['Total_Value'] = stock['Qty'] * stock['Unit_Cost']
+    else:
+        # ถ้าไม่มีฐานข้อมูลยาเลย ให้ใส่ค่า 0 ไว้ก่อน
+        stock['Unit_Cost'] = 0
+        stock['Total_Value'] = 0
+        stock['Type'] = 'Unknown'
+        stock['BUD_Thawed'] = 0
 
     # Header
     st.markdown("<h1>Smart Extemp Inventory</h1>", unsafe_allow_html=True)
@@ -128,25 +143,28 @@ else:
                 detail_df = active_stock[['Drug_Name', 'Batch_ID', 'Qty', 'Location', 'Expiry_Date', 'Days_Left']].copy()
                 detail_df['Expiry_Date'] = detail_df['Expiry_Date'].apply(safe_fmt)
                 st.dataframe(detail_df.sort_values('Days_Left'), use_container_width=True, hide_index=True)
+        else:
+            st.info("ไม่มีข้อมูลยาในสต็อกขณะนี้")
 
         st.divider()
         st.markdown("### ⚠️ แจ้งเตือนไฟจราจร")
-        alerts = filtered[(filtered['Days_Left'] <= 7) & (filtered['Location'] != 'Disposal')].sort_values('Days_Left')
-        for _, r in alerts.iterrows():
-            c = "#FFCDD2" if r['Days_Left'] <= 3 else "#FFF9C4"
-            hint = " <span style='color:#D32F2F;'>(ลืมกดละลายยา?)</span>" if r['Days_Left'] < 0 and r['Status'] == 'Frozen' else ""
-            st.markdown(f"<div class='alert-box' style='background-color:{c};'><b>{r['Drug_Name']}</b> ({r['Batch_ID']}) - {r['Days_Left']} วัน 📍 {r['Location']}{hint}</div>", unsafe_allow_html=True)
+        if not filtered.empty:
+            alerts = filtered[(filtered['Days_Left'] <= 7) & (filtered['Location'] != 'Disposal')].sort_values('Days_Left')
+            for _, r in alerts.iterrows():
+                c = "#FFCDD2" if r['Days_Left'] <= 3 else "#FFF9C4"
+                hint = " <span style='color:#D32F2F;'>(ลืมกดละลายยา?)</span>" if r['Days_Left'] < 0 and r['Status'] == 'Frozen' else ""
+                st.markdown(f"<div class='alert-box' style='background-color:{c};'><b>{r['Drug_Name']}</b> ({r['Batch_ID']}) - {r['Days_Left']} วัน 📍 {r['Location']}{hint}</div>", unsafe_allow_html=True)
+        else:
+            st.success("ไม่มียาใกล้หมดอายุ")
 
         st.divider()
         c_th, c_di, c_wa = st.columns(3)
         
-        # --- 1. ปรับปรุงหมวดละลายยา ---
         with c_th:
             st.markdown("#### ❄️ ละลายยา (Frozen)")
-            if 'Type' in filtered.columns:
+            if 'Type' in filtered.columns and not filtered.empty:
                 f_items = filtered[(filtered['Type'] == 'Frozen') & (filtered['Status'] == 'Frozen')]
                 
-                # ระบบเตือนเฉพาะตัวที่ใกล้หมดอายุ (<= 3 วัน) หรือ ลืมกด (< 0)
                 f_alerts = f_items[f_items['Days_Left'] <= 3].sort_values('Days_Left')
                 if not f_alerts.empty:
                     for _, r in f_alerts.iterrows():
@@ -155,7 +173,6 @@ else:
                         else:
                             st.markdown(f"<div style='color:#F57C00; font-size:14px; font-weight:bold;'>⚠️ เหลือ {r['Days_Left']} วัน: {r['Drug_Name']}</div>", unsafe_allow_html=True)
                 
-                # เปลี่ยนจากปุ่มรวดเดียว เป็น Dropdown ให้เลือก
                 if not f_items.empty:
                     thaw_sel = st.selectbox("เลือกยาที่ต้องการละลาย:", f_items.apply(lambda x: f"{x['Drug_Name']} (Batch: {x['Batch_ID']})", axis=1), index=None, key="thaw_sel")
                     if thaw_sel:
@@ -163,10 +180,9 @@ else:
                         if st.button("💧 ยืนยันละลายยา", type="primary", use_container_width=True):
                             t_row = stock[stock['Batch_ID']==t_bid].iloc[0]
                             bud = int(t_row['BUD_Thawed']) if str(t_row['BUD_Thawed']).isdigit() else 0
-                            # เปลี่ยน Status และตั้งวันหมดอายุใหม่นับจาก "วันนี้"
                             stock.loc[stock['Batch_ID']==t_bid, ['Status', 'Expiry_Date']] = ['Thawed', today + timedelta(days=bud)]
                             save_data(stock, 'stock'); st.success("ละลายยาสำเร็จ!"); st.rerun()
-                else: st.info("ไม่มียาแช่แข็งในระบบ")
+                else: st.info("ไม่มียาแช่แข็งรอละลาย")
             else: st.info("ไม่มียาแช่แข็งในระบบ")
 
         with c_di:
@@ -205,107 +221,58 @@ else:
                                 new_w['Qty'] = q_w; new_w['Location'] = 'Disposal'
                                 stock = pd.concat([stock, pd.DataFrame([new_w])], ignore_index=True)
                             save_data(stock, 'stock'); st.error("บันทึกการทิ้งสำเร็จ"); st.rerun()
-                            
-        # === TAB 2: EXECUTIVE ===
-        with tab2:
-            st.markdown("<div class='custom-header'>📊 สรุปรายงานมูลค่าและการบริหารจัดการ</div>", unsafe_allow_html=True)
-            st.markdown("<div class='custom-subheader'>📅 เลือกช่วงเวลาที่ต้องการดูข้อมูล (รอบวันที่รับเข้า/ผลิต)</div>", unsafe_allow_html=True)
-            c_date1, c_date2 = st.columns(2)
-            
-            _, last_day_num = calendar.monthrange(today.year, today.month)
-            default_start = today.date().replace(day=1)
-            default_end = today.date().replace(day=last_day_num)
-            
-            start_date = c_date1.date_input("ตั้งแต่วันที่:", default_start)
-            end_date = c_date2.date_input("ถึงวันที่:", default_end)
-            
-            if not filtered.empty:
-                mask = (filtered['Date_Produced'].dt.date >= start_date) & (filtered['Date_Produced'].dt.date <= end_date)
-                t2_stock = filtered[mask].copy()
-                
-                # คำนวณเฉพาะยาที่ In_Stock (คงคลัง)
-                v_total = t2_stock[t2_stock['Record_Status'] == 'In_Stock']['Total_Value'].sum()
-                # คำนวณยาที่ถูกทำลาย (Disposed)
-                v_waste = t2_stock[t2_stock['Record_Status'] == 'Disposed']['Total_Value'].sum()
-                # 💡 คำนวณมูลค่าประหยัด: ยาที่ถูกโอน (Transferred) และไม่ได้ถูกนำไปทิ้ง (รวมทั้งคงคลัง และจ่ายให้ผู้ป่วยแล้ว)
-                v_saved = t2_stock[(t2_stock['Status'] == 'Transferred') & (t2_stock['Record_Status'].isin(['In_Stock', 'Dispensed']))]['Total_Value'].sum()
 
-                m1, m2, m3 = st.columns(3)
-                m1.metric("📦 มูลค่ายาคงคลัง (ในตู้)", f"฿ {v_total:,.2f}")
-                m2.metric("♻️ มูลค่าประหยัดได้ (ช่วยกันใช้)", f"฿ {v_saved:,.2f}")
-                m3.metric("🗑️ มูลค่าสูญเสีย (ทิ้ง/หมดอายุ)", f"฿ {v_waste:,.2f}", delta_color="inverse")
-                st.markdown("<br>", unsafe_allow_html=True)
-                
-                with st.expander("🗑️ คลิกดูรายละเอียด 'ยาที่สูญเสีย/หมดอายุ' (ใช้พิจารณาลดการสำรอง)"):
-                    df_waste = t2_stock[t2_stock['Record_Status'] == 'Disposed'].copy()
-                    if not df_waste.empty:
-                        df_waste['หมายเหตุ'] = df_waste['Status'].apply(
-                            lambda x: "⚠️ โอนช่วยใช้แล้ว แต่ก็ยังหมดอายุ" if x == 'Transferred' else "ทิ้ง/หมดอายุ ปกติ"
-                        )
-                        df_waste['วันที่รับเข้า'] = df_waste['Date_Produced'].dt.strftime('%d/%m/%Y')
-                        show_waste_cols = ['วันที่รับเข้า', 'Drug_Name', 'Batch_ID', 'Qty', 'Location', 'Total_Value', 'หมายเหตุ', 'Action_By']
-                        st.dataframe(df_waste[show_waste_cols].style.format({'Total_Value': '{:,.2f}'}), use_container_width=True, hide_index=True)
-                    else:
-                        st.success("🎉 ไม่มียาที่สูญเสียในช่วงเวลานี้")
-                        
-                with st.expander("📦 คลิกดูรายละเอียด 'ยาคงคลัง' และ 'ยาที่จ่ายให้ผู้ป่วยแล้ว (ประหยัดสำเร็จ)'"):
-                    df_active = t2_stock[t2_stock['Record_Status'].isin(['In_Stock', 'Dispensed'])].copy()
-                    if not df_active.empty:
-                        df_active['สถานะยา'] = df_active['Record_Status'].map({'In_Stock':'📦 คงคลัง', 'Dispensed':'✅ จ่ายแล้ว'})
-                        df_active['ประวัติ'] = df_active['Status'].apply(lambda x: "♻️ รับโอนมา" if x == 'Transferred' else "-")
-                        df_active['วันที่รับเข้า'] = df_active['Date_Produced'].dt.strftime('%d/%m/%Y')
-                        show_active_cols = ['วันที่รับเข้า', 'Drug_Name', 'Batch_ID', 'Qty', 'Location', 'สถานะยา', 'ประวัติ', 'Total_Value']
-                        st.dataframe(df_active[show_active_cols].style.format({'Total_Value': '{:,.2f}'}), use_container_width=True, hide_index=True)
-                    else:
-                        st.info("ไม่มีรายการยาคงคลังหรือเบิกจ่ายในรอบเวลานี้")
+    # === TAB 2: EXECUTIVE ===
+    with tab2:
+        st.markdown("### 📊 สรุปรายงานมูลค่า")
+        sd = st.date_input("เริ่ม:", today.date() - timedelta(days=30))
+        ed = st.date_input("สิ้นสุด:", today.date())
+        
+        if not stock.empty:
+            st_date = pd.to_datetime(stock['Date_Produced'], errors='coerce')
+            mask = (st_date.dt.date >= sd) & (st_date.dt.date <= ed)
+            t2_stock = stock[mask].copy()
+            
+            if not t2_stock.empty:
+                v_total = t2_stock[t2_stock['Location'] != 'Disposal']['Total_Value'].sum()
+                v_waste = t2_stock[t2_stock['Location'] == 'Disposal']['Total_Value'].sum()
+                m1, m2 = st.columns(2)
+                m1.metric("มูลค่าคงคลังรับเข้า", f"{v_total:,.2f} บาท")
+                m2.metric("🗑️ มูลค่าสูญเสีย", f"{v_waste:,.2f} บาท", delta_color="inverse")
             else:
-                st.info("ไม่พบข้อมูลในหน่วยงานที่เลือก")
+                st.info("ไม่มีข้อมูลในช่วงเวลาที่เลือก")
 
-        with tab3:
-            if st.session_state.role == 'admin':
-                adm_t1, adm_t2, adm_t3 = st.tabs(["📥 รับยาเข้า", "🛠️ แก้ไขสต็อก", "💊 ฐานข้อมูลยา (Master Data)"])
-                with adm_t1:
-                    with st.form("in_form", clear_on_submit=True):
-                        c1, c2 = st.columns(2)
-                        dn = c1.selectbox("ชื่อยา:", drugs['Drug_Name'].unique() if not drugs.empty else [], index=None)
-                        bn = c1.text_input("Batch ID:")
-                        qn = c2.number_input("จำนวน:", min_value=1)
-                        pn = c2.date_input("วันผลิต/รับเข้า:", today)
-                        ln = c2.selectbox("ห้องเก็บ:", active_locs, index=None)
-                        if st.form_submit_button("บันทึกรับเข้า"):
-                            if dn and bn and ln:
-                                dinfo = drugs[drugs['Drug_Name']==dn].iloc[0]
-                                dtype = str(dinfo.get('Type', 'Room')).strip()
-                                bud_val = dinfo.get('BUD_Frozen', 0) if dtype == 'Frozen' else (dinfo.get('BUD_Cold', 0) if dtype == 'Cold' else dinfo.get('BUD_Room', 0))
-                                match = re.search(r'\d+', str(bud_val))
-                                days = int(match.group()) if match else 30
-                                en = pn + timedelta(days=days)
-                                
-                                new_r = {
-                                    'Date_Produced': pn.strftime('%Y-%m-%d'), 'Drug_Name': dn, 'Batch_ID': bn,
-                                    'Qty': qn, 'Expiry_Date': en.strftime('%Y-%m-%d'), 'Location': ln,
-                                    'Status': 'Frozen' if dtype == 'Frozen' else 'Active', 'Is_Saved': 'FALSE',
-                                    'Action_By': st.session_state.user_name,
-                                    'Record_Status': 'In_Stock'
-                                }
-                                stock = pd.concat([stock, pd.DataFrame([new_r])], ignore_index=True)
-                                save_data(stock, 'stock'); 
-                                st.success(f"✅ รับเข้าสำเร็จ! วันผลิต: {pn.strftime('%d/%m/%Y')} | วันหมดอายุ: {en.strftime('%d/%m/%Y')}")
-                                st.rerun()
-                            else: st.warning("กรุณากรอกข้อมูลให้ครบถ้วน")
-                with adm_t2:
-                    st.info("💡 แก้ไขตารางสต็อกโดยตรง (แก้ไขเสร็จอย่าลืมกดบันทึก)")
-                    ed_s_df = stock.drop(columns=['Days_Left','Total_Value','BUD_Cold','Type','merge_key'], errors='ignore').copy()
-                    ed_s_df['Date_Produced'] = ed_s_df['Date_Produced'].dt.strftime('%Y-%m-%d').fillna('')
-                    ed_s_df['Expiry_Date'] = ed_s_df['Expiry_Date'].dt.strftime('%Y-%m-%d').fillna('')
-                    
-                    ed_s = st.data_editor(ed_s_df, num_rows="dynamic", use_container_width=True)
-                    if st.button("💾 บันทึกสต็อกลงระบบ"): 
-                        save_data(ed_s, 'stock'); st.success("บันทึกสำเร็จ!"); st.rerun()
-                with adm_t3:
-                    st.info("💡 แก้ไขฐานข้อมูลรายการยาหลัก (ราคายา, อายุการใช้งาน)")
-                    ed_d = st.data_editor(drugs, num_rows="dynamic", use_container_width=True)
-                    if st.button("💾 บันทึกฐานข้อมูลยา"): 
-                        save_data(ed_d, 'drugs'); st.success("อัปเดตข้อมูลยาสำเร็จ!"); st.rerun()
-            else:
-                st.warning("⛔ ขออภัยค่ะ เฉพาะสิทธิ์ผู้ดูแลระบบ (Admin) เท่านั้นที่เข้าใช้งานส่วนนี้ได้")
+    # === TAB 3: ADMIN ===
+    with tab3:
+        if st.session_state.role == 'admin':
+            adm_t1, adm_t2 = st.tabs(["📥 รับยาเข้า", "🛠️ แก้ไขสต็อก"])
+            with adm_t1:
+                with st.form("in_form", clear_on_submit=True):
+                    c1, c2 = st.columns(2)
+                    drug_list = drugs['Drug_Name'].unique() if not drugs.empty else []
+                    dn = c1.selectbox("ชื่อยา:", drug_list, index=None)
+                    bn = c1.text_input("Batch ID:")
+                    qn = c2.number_input("จำนวน:", min_value=1)
+                    pn = c2.date_input("วันผลิต:", today)
+                    ln = c2.selectbox("ห้องเก็บ:", active_locs, index=None)
+                    if st.form_submit_button("บันทึกรับเข้า"):
+                        if dn and bn and ln:
+                            dinfo = drugs[drugs['Drug_Name']==dn].iloc[0]
+                            bud = dinfo['BUD_Frozen'] if dinfo['Type']=='Frozen' else (dinfo['BUD_Thawed'] if dinfo['Type']=='Cold' else dinfo['BUD_Room'])
+                            days = int(float(bud)) if str(bud).strip() != "" else 0
+                            en = pn + timedelta(days=days)
+                            new_r = {
+                                'Date_Produced': pn.strftime('%Y-%m-%d'), 'Drug_Name': dn, 'Batch_ID': bn,
+                                'Qty': qn, 'Expiry_Date': en.strftime('%Y-%m-%d'), 'Location': ln,
+                                'Status': 'Frozen' if dinfo['Type'] == 'Frozen' else 'Active', 'Is_Saved': 'FALSE'
+                            }
+                            stock = pd.concat([stock, pd.DataFrame([new_r])], ignore_index=True)
+                            save_data(stock, 'stock'); st.success("รับเข้าสำเร็จ!"); st.rerun()
+            with adm_t2:
+                st.write("แก้ไขข้อมูลดิบ")
+                ed_s = st.data_editor(stock.drop(columns=['Days_Left','Total_Value','BUD_Thawed','Type'], errors='ignore'), num_rows="dynamic")
+                if st.button("💾 บันทึกลง Cloud"): save_data(ed_s, 'stock'); st.rerun()
+
+# ==========================================
+# สิ้นสุดโค้ดแค่นี้ครับ (ต้องจบที่บรรทัด st.rerun() ด้านบน)
+# ==========================================
