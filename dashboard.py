@@ -38,25 +38,32 @@ st.markdown("""
 SHEET_ID = "1_fd62tPsJRUONdRYlQ9hX9SOb-hPs7RCoxseK2onzYI" 
 scopes = ["https://www.googleapis.com/auth/spreadsheets"]
 
-@st.cache_resource
+# ลบ @st.cache_resource ออก เพื่อบังคับให้แอปลืมค่าเก่าและอ่านตู้เซฟใหม่ทุกครั้ง
 def get_gsheet_client():
+    # 1. ลองหาไฟล์ในคอมพิวเตอร์ก่อน
+    if os.path.exists("service_account.json"):
+        try: return gspread.authorize(Credentials.from_service_account_file("service_account.json", scopes=scopes))
+        except: pass
+        
+    # 2. ลองหาจากตู้เซฟบนเว็บ Streamlit
     try:
+        creds_str = None
         if "GOOGLE_CREDENTIALS" in st.secrets:
             creds_str = st.secrets["GOOGLE_CREDENTIALS"]
-            creds_info = json.loads(creds_str)
-            return gspread.authorize(Credentials.from_service_account_info(creds_info, scopes=scopes))
         elif "google_credentials" in st.secrets:
             creds_str = st.secrets["google_credentials"]
+            
+        if creds_str:
             creds_info = json.loads(creds_str)
             return gspread.authorize(Credentials.from_service_account_info(creds_info, scopes=scopes))
         else:
-            st.error("⚠️ หาตู้เซฟไม่เจอ! (ยังไม่ได้ใส่ GOOGLE_CREDENTIALS ในหน้า Settings ของ Streamlit)")
+            st.error("⚠️ หาตู้เซฟไม่เจอ! ระบบมองไม่เห็น GOOGLE_CREDENTIALS ใน Secrets")
             return None
     except json.JSONDecodeError:
-        st.error("⚠️ กุญแจแหว่ง! (ข้อมูลใน Secrets ไม่ใช่รูปแบบ JSON ที่ถูกต้อง ลองก๊อปปี้ไปวางใหม่ครับ)")
+        st.error("⚠️ กุญแจแหว่ง! ข้อมูลใน Secrets ก๊อปปี้มาไม่ครบ หรือมีเครื่องหมายผิดปกติ")
         return None
     except Exception as e:
-        st.error(f"⚠️ เกิดข้อผิดพลาดอื่นๆ: {e}")
+        st.error(f"⚠️ พบปัญหาอื่นๆ: {e}")
         return None
 
 client = get_gsheet_client()
