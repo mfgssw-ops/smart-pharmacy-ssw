@@ -14,11 +14,12 @@ st.set_page_config(
     page_icon="🏥"
 )
 
-# 🎨 CSS: ตกแต่ง UI แบบจัดเต็ม
+# 🎨 CSS: คืนค่าธีมเดิม โลโก้ และฟอนต์จัดเต็ม
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;700&display=swap');
     
+    /* บังคับใช้ฟอนต์ Prompt ทุกจุด */
     p, div, input, button, select, h1, h2, h3, h4, h5, h6, table, th, td, label {
         font-family: 'Prompt', sans-serif !important;
     }
@@ -78,7 +79,10 @@ def load_data():
             values = worksheet.get_all_values() 
             if not values: return pd.DataFrame()
             return pd.DataFrame(values[1:], columns=values[0])
-        except: return pd.DataFrame() 
+        except Exception as e:
+            # เพิ่มระบบแจ้งเตือนถ้า Google Sheets โหลดไม่ขึ้น (จะได้รู้ว่าข้อมูลไม่ได้หาย)
+            st.error(f"⚠️ โหลดข้อมูล {tab_name} ไม่สำเร็จ, กรุณารีเฟรชหน้าเว็บ")
+            return pd.DataFrame() 
     return get_sheet_df("Drugs"), get_sheet_df("Stock"), get_sheet_df("Locations"), get_sheet_df("CONFIG")
 
 def save_data(df, file_name):
@@ -111,9 +115,14 @@ else:
     drugs, stock, locs, config = load_data()
     today = datetime.now()
     
-    # โหลดและจัดการข้อมูล
+    # 🛡️ เกราะป้องกันขั้นสุด: บังคับสร้างคอลัมน์กันแอปพัง
+    expected_cols = ['Date_Produced', 'Drug_Name', 'Batch_ID', 'Qty', 'Expiry_Date', 'Location', 'Status', 'Is_Saved']
     if stock.empty:
-        stock = pd.DataFrame(columns=['Date_Produced', 'Drug_Name', 'Batch_ID', 'Qty', 'Expiry_Date', 'Location', 'Status', 'Is_Saved'])
+        stock = pd.DataFrame(columns=expected_cols)
+    else:
+        for col in expected_cols:
+            if col not in stock.columns: stock[col] = ''
+    
     if locs.empty:
         locs = pd.DataFrame(columns=['Location'])
     
@@ -122,18 +131,29 @@ else:
     stock['Days_Left'] = (stock['Expiry_Date'] - pd.Timestamp(today.date())).dt.days
     stock['Qty'] = pd.to_numeric(stock['Qty'], errors='coerce').fillna(0)
     
-    if not drugs.empty:
-        stock = stock.drop(columns=['Unit_Cost', 'Type', 'BUD_Thawed'], errors='ignore')
-        stock = stock.merge(drugs[['Drug_Name', 'Unit_Cost', 'Type', 'BUD_Thawed']], on='Drug_Name', how='left')
-        stock['Unit_Cost'] = pd.to_numeric(stock['Unit_Cost'], errors='coerce').fillna(0)
-        stock['Total_Value'] = stock['Qty'] * stock['Unit_Cost']
-    else:
-        stock['Unit_Cost'], stock['Total_Value'], stock['Type'], stock['BUD_Thawed'] = 0, 0, 'Unknown', 0
+    expected_drug_cols = ['Drug_Name', 'Unit_Cost', 'Type', 'BUD_Thawed']
+    if drugs.empty:
+        drugs = pd.DataFrame(columns=expected_drug_cols)
+        
+    stock = stock.drop(columns=['Unit_Cost', 'Type', 'BUD_Thawed'], errors='ignore')
+    stock = stock.merge(drugs[['Drug_Name', 'Unit_Cost', 'Type', 'BUD_Thawed']], on='Drug_Name', how='left')
+    
+    stock['Unit_Cost'] = pd.to_numeric(stock['Unit_Cost'], errors='coerce').fillna(0)
+    stock['Total_Value'] = stock['Qty'] * stock['Unit_Cost']
+    stock['Type'] = stock['Type'].fillna('Unknown')
+    stock['BUD_Thawed'] = stock['BUD_Thawed'].fillna(0)
 
     # --- ส่วนหัวของแอป (Header) ที่สวยงาม ---
     col_logo, col_title = st.columns([1, 6])
     with col_logo:
-        st.markdown("<h1 style='font-size:75px; text-align:center; margin-top:0;'>🏥</h1>", unsafe_allow_html=True)
+        # เช็คว่ามีไฟล์รูปโลโก้ไหม ถ้าไม่มีให้ใช้ Emoji แทน
+        if os.path.exists("SSW_Logo.jpg"): 
+            st.image("SSW_Logo.jpg", width=120)
+        elif os.path.exists("Logo.jpg"): 
+            st.image("Logo.jpg", width=120)
+        else: 
+            st.markdown("<h1 style='font-size:75px; text-align:center; margin-top:0;'>🏥</h1>", unsafe_allow_html=True)
+
     with col_title:
         st.markdown("""
             <h1 style='line-height:1.1; color:#2E8B57 !important; margin-bottom:5px;'>ระบบบริหารจัดการยาเตรียมเฉพาะรายอัจฉริยะ</h1>
@@ -310,3 +330,4 @@ else:
                 st.warning("⚠️ การแก้ไขข้อมูลในหน้านี้จะส่งผลโดยตรงต่อระบบ กรุณาตรวจสอบให้แน่ใจก่อนกดบันทึก")
                 ed_s = st.data_editor(stock.drop(columns=['Days_Left','Total_Value','BUD_Thawed','Type'], errors='ignore'), num_rows="dynamic", use_container_width=True)
                 if st.button("💾 ยืนยันการแก้ไขลง Cloud", use_container_width=True): save_data(ed_s, 'stock'); st.success("อัปเดตข้อมูลเรียบร้อย"); st.rerun()
+                    
