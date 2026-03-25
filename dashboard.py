@@ -40,15 +40,24 @@ scopes = ["https://www.googleapis.com/auth/spreadsheets"]
 
 @st.cache_resource
 def get_gsheet_client():
-    if os.path.exists("service_account.json"):
-        try: return gspread.authorize(Credentials.from_service_account_file("service_account.json", scopes=scopes))
-        except: pass
     try:
         if "GOOGLE_CREDENTIALS" in st.secrets:
-            creds_info = json.loads(st.secrets["GOOGLE_CREDENTIALS"])
+            creds_str = st.secrets["GOOGLE_CREDENTIALS"]
+            creds_info = json.loads(creds_str)
             return gspread.authorize(Credentials.from_service_account_info(creds_info, scopes=scopes))
-    except: pass
-    return None
+        elif "google_credentials" in st.secrets:
+            creds_str = st.secrets["google_credentials"]
+            creds_info = json.loads(creds_str)
+            return gspread.authorize(Credentials.from_service_account_info(creds_info, scopes=scopes))
+        else:
+            st.error("⚠️ หาตู้เซฟไม่เจอ! (ยังไม่ได้ใส่ GOOGLE_CREDENTIALS ในหน้า Settings ของ Streamlit)")
+            return None
+    except json.JSONDecodeError:
+        st.error("⚠️ กุญแจแหว่ง! (ข้อมูลใน Secrets ไม่ใช่รูปแบบ JSON ที่ถูกต้อง ลองก๊อปปี้ไปวางใหม่ครับ)")
+        return None
+    except Exception as e:
+        st.error(f"⚠️ เกิดข้อผิดพลาดอื่นๆ: {e}")
+        return None
 
 client = get_gsheet_client()
 
