@@ -3,6 +3,7 @@ import pandas as pd
 import altair as alt
 from datetime import datetime, timedelta
 import os
+import json
 import gspread
 from google.oauth2.service_account import Credentials
 
@@ -31,12 +32,19 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. CONNECT TO GOOGLE SHEETS ---
+# --- 2. CONNECT TO GOOGLE SHEETS (แก้ไขระบบตู้เซฟ) ---
 SHEET_ID = "1_fd62tPsJRUONdRYlQ9hX9SOb-hPs7RCoxseK2onzYI" 
 scopes = ["https://www.googleapis.com/auth/spreadsheets"]
 
 try:
-    creds = Credentials.from_service_account_file("key.json", scopes=scopes)
+    if "GOOGLE_CREDENTIALS" in st.secrets:
+        # กรณีรันบนเว็บ Streamlit Cloud (อ่านจากตู้เซฟ)
+        creds_dict = json.loads(st.secrets["GOOGLE_CREDENTIALS"])
+        creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
+    else:
+        # กรณีรันทดสอบในคอมตัวเอง (อ่านไฟล์ key.json เหมือนเดิม)
+        creds = Credentials.from_service_account_file("key.json", scopes=scopes)
+        
     client = gspread.authorize(creds)
     gsheet = client.open_by_key(SHEET_ID)
 except Exception as e:
@@ -87,13 +95,11 @@ else:
     drugs, stock, locs, config = load_data()
     today = datetime.now()
     
-    # 🛡️ เกราะป้องกัน: ถ้าตารางว่างเปล่า ให้สร้างโครงสร้างคอลัมน์หลอกขึ้นมากันแอปพัง
     if stock.empty:
         stock = pd.DataFrame(columns=['Date_Produced', 'Drug_Name', 'Batch_ID', 'Qty', 'Expiry_Date', 'Location', 'Status', 'Is_Saved'])
     if locs.empty:
         locs = pd.DataFrame(columns=['Location'])
     
-    # เตรียมข้อมูลวันที่และตัวเลข
     stock['Expiry_Date'] = pd.to_datetime(stock['Expiry_Date'], errors='coerce')
     stock['Date_Produced'] = pd.to_datetime(stock['Date_Produced'], errors='coerce') 
     stock['Days_Left'] = (stock['Expiry_Date'] - pd.Timestamp(today.date())).dt.days
@@ -105,7 +111,6 @@ else:
         stock['Unit_Cost'] = pd.to_numeric(stock['Unit_Cost'], errors='coerce').fillna(0)
         stock['Total_Value'] = stock['Qty'] * stock['Unit_Cost']
     else:
-        # ถ้าไม่มีฐานข้อมูลยาเลย ให้ใส่ค่า 0 ไว้ก่อน
         stock['Unit_Cost'] = 0
         stock['Total_Value'] = 0
         stock['Type'] = 'Unknown'
@@ -269,7 +274,3 @@ else:
                 st.write("แก้ไขข้อมูลดิบ")
                 ed_s = st.data_editor(stock.drop(columns=['Days_Left','Total_Value','BUD_Thawed','Type'], errors='ignore'), num_rows="dynamic")
                 if st.button("💾 บันทึกลง Cloud"): save_data(ed_s, 'stock'); st.rerun()
-
-# ==========================================
-# สิ้นสุดโค้ดแค่นี้ครับ (ต้องจบที่บรรทัด st.rerun() ด้านบน)
-# ==========================================
