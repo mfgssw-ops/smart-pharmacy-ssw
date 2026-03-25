@@ -44,8 +44,8 @@ def get_gsheet_client():
         try: return gspread.authorize(Credentials.from_service_account_file("service_account.json", scopes=scopes))
         except: pass
     try:
-        if "google_credentials" in st.secrets:
-            creds_info = json.loads(st.secrets["google_credentials"])
+        if "GOOGLE_CREDENTIALS" in st.secrets:
+            creds_info = json.loads(st.secrets["GOOGLE_CREDENTIALS"])
             return gspread.authorize(Credentials.from_service_account_info(creds_info, scopes=scopes))
     except: pass
     return None
