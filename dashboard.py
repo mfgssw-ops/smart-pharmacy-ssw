@@ -234,13 +234,24 @@ else:
             
             # โชว์เฉพาะยาที่ยังมีในตู้ (In_Stock)
             with col_alert1:
-                st.markdown("<div class='custom-subheader'>📅 แจ้งเตือนยาหมดอายุ (ภายใน 10 วัน)</div>", unsafe_allow_html=True)
-                alerts = filtered[(filtered['Days_Left'] <= 10) & (filtered['Record_Status'] == 'In_Stock')].sort_values('Days_Left')
-                if alerts.empty: st.success("✅ ไม่มียาใกล้หมดอายุใน 10 วันนี้")
+                st.markdown("<div class='custom-subheader'>📅 แจ้งเตือนยาหมดอายุ (ภายใน 7 วัน)</div>", unsafe_allow_html=True)
                 
-                for _, r in alerts.iterrows():
-                    c = "#FFCDD2" if r['Days_Left'] <= 7 else "#FFF9C4"
-                    st.markdown(f"<div class='alert-box' style='background-color:{c};'><b>{r['Drug_Name']}</b> ({r['Batch_ID']}) - เหลือ {int(r['Days_Left'])} วัน 📍 {r['Location']}</div>", unsafe_allow_html=True)
+                # 💡 กรองยาที่ยังแช่แข็งอยู่ออกไป (ไม่ให้มาโชว์ซ้ำซ้อน)
+                if 'Type' in filtered.columns:
+                    alerts = filtered[
+                        (filtered['Days_Left'] <= 7) & 
+                        (filtered['Record_Status'] == 'In_Stock') &
+                        ~((filtered['Type'] == 'Frozen') & (filtered['Status'] == 'Frozen'))
+                    ].sort_values('Days_Left')
+                else:
+                    alerts = filtered[(filtered['Days_Left'] <= 7) & (filtered['Record_Status'] == 'In_Stock')].sort_values('Days_Left')
+
+                if alerts.empty: 
+                    st.success("✅ ไม่มียาใกล้หมดอายุใน 7 วันนี้")
+                else:
+                    for _, r in alerts.iterrows():
+                        c = "#FFCDD2" if r['Days_Left'] <= 7 else "#FFF9C4"
+                        st.markdown(f"<div class='alert-box' style='background-color:{c};'><b>{r['Drug_Name']}</b> ({r['Batch_ID']}) - เหลือ {int(r['Days_Left'])} วัน 📍 {r['Location']}</div>", unsafe_allow_html=True)
 
             with col_alert2:
                 st.markdown("#### ❄️ แจ้งเตือนละลายยา")
