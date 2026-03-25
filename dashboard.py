@@ -330,4 +330,3 @@ else:
                 st.warning("⚠️ การแก้ไขข้อมูลในหน้านี้จะส่งผลโดยตรงต่อระบบ กรุณาตรวจสอบให้แน่ใจก่อนกดบันทึก")
                 ed_s = st.data_editor(stock.drop(columns=['Days_Left','Total_Value','BUD_Thawed','Type'], errors='ignore'), num_rows="dynamic", use_container_width=True)
                 if st.button("💾 ยืนยันการแก้ไขลง Cloud", use_container_width=True): save_data(ed_s, 'stock'); st.success("อัปเดตข้อมูลเรียบร้อย"); st.rerun()
-                    
