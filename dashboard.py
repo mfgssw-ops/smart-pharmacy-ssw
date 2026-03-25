@@ -227,29 +227,29 @@ else:
                     st.markdown(f"<div class='alert-box' style='background-color:{c};'><b>{r['Drug_Name']}</b> ({r['Batch_ID']}) - เหลือ {int(r['Days_Left'])} วัน 📍 {r['Location']}</div>", unsafe_allow_html=True)
 
             with col_alert2:
-            st.markdown("#### ❄️ แจ้งเตือนละลายยา")
-            if 'Type' in filtered.columns and not filtered.empty:
-                f_items = filtered[(filtered['Type'] == 'Frozen') & (filtered['Status'] == 'Frozen')]
-                
-                f_alerts = f_items[f_items['Days_Left'] <= 3].sort_values('Days_Left')
-                if not f_alerts.empty:
-                    for _, r in f_alerts.iterrows():
-                        if r['Days_Left'] < 0:
-                            st.markdown(f"<div style='color:#D32F2F; font-size:14px; font-weight:bold;'>❌ เลยกำหนด: {r['Drug_Name']}</div>", unsafe_allow_html=True)
-                        else:
-                            st.markdown(f"<div style='color:#F57C00; font-size:14px; font-weight:bold;'>⚠️ เหลือ {r['Days_Left']} วัน: {r['Drug_Name']}</div>", unsafe_allow_html=True)
-                
-                if not f_items.empty:
-                    thaw_sel = st.selectbox("เลือกยาที่ต้องการละลาย:", f_items.apply(lambda x: f"{x['Drug_Name']} (Batch: {x['Batch_ID']})", axis=1), index=None, key="thaw_sel")
-                    if thaw_sel:
-                        t_bid = thaw_sel.split("Batch: ")[1].split(")")[0]
-                        if st.button("💧 ยืนยันละลายยา", type="primary", use_container_width=True):
-                            t_row = stock[stock['Batch_ID']==t_bid].iloc[0]
-                            bud = int(t_row['BUD_Thawed']) if str(t_row['BUD_Thawed']).isdigit() else 0
-                            stock.loc[stock['Batch_ID']==t_bid, ['Status', 'Expiry_Date']] = ['Thawed', today + timedelta(days=bud)]
-                            save_data(stock, 'stock'); st.success("ละลายยาสำเร็จ!"); st.rerun()
-                else: st.info("ไม่มียาแช่แข็งรอละลาย")
-            else: st.info("ไม่มียาแช่แข็งในระบบ")
+                st.markdown("#### ❄️ แจ้งเตือนละลายยา")
+                if 'Type' in filtered.columns and not filtered.empty:
+                    f_items = filtered[(filtered['Type'] == 'Frozen') & (filtered['Status'] == 'Frozen')]
+                    
+                    f_alerts = f_items[f_items['Days_Left'] <= 3].sort_values('Days_Left')
+                    if not f_alerts.empty:
+                        for _, r in f_alerts.iterrows():
+                            if r['Days_Left'] < 0:
+                                st.markdown(f"<div style='color:#D32F2F; font-size:14px; font-weight:bold;'>❌ เลยกำหนด: {r['Drug_Name']}</div>", unsafe_allow_html=True)
+                            else:
+                                st.markdown(f"<div style='color:#F57C00; font-size:14px; font-weight:bold;'>⚠️ เหลือ {r['Days_Left']} วัน: {r['Drug_Name']}</div>", unsafe_allow_html=True)
+                    
+                    if not f_items.empty:
+                        thaw_sel = st.selectbox("เลือกยาที่ต้องการละลาย:", f_items.apply(lambda x: f"{x['Drug_Name']} (Batch: {x['Batch_ID']})", axis=1), index=None, key="thaw_sel")
+                        if thaw_sel:
+                            t_bid = thaw_sel.split("Batch: ")[1].split(")")[0]
+                            if st.button("💧 ยืนยันละลายยา", type="primary", use_container_width=True):
+                                t_row = stock[stock['Batch_ID']==t_bid].iloc[0]
+                                bud = int(t_row['BUD_Thawed']) if str(t_row['BUD_Thawed']).isdigit() else 0
+                                stock.loc[stock['Batch_ID']==t_bid, ['Status', 'Expiry_Date']] = ['Thawed', today + timedelta(days=bud)]
+                                save_data(stock, 'stock'); st.success("ละลายยาสำเร็จ!"); st.rerun()
+                    else: st.info("ไม่มียาแช่แข็งรอละลาย")
+                else: st.info("ไม่มียาแช่แข็งในระบบ")
 
             st.markdown("<div class='custom-header'>📦 ภาพรวมสต็อกยาปัจจุบัน</div>", unsafe_allow_html=True)
             active_stock = filtered[filtered['Record_Status'] == 'In_Stock']
