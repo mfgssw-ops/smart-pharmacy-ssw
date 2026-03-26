@@ -446,10 +446,12 @@ else:
             else:
                 st.info("ไม่พบข้อมูลในหน่วยงานที่เลือก")
 
+# === TAB 3: ADMIN ===
         with tab3:
             if st.session_state.role == 'admin':
                 adm_t1, adm_t2, adm_t3 = st.tabs(["📥 รับยาเข้า", "🛠️ แก้ไขสต็อก", "💊 ฐานข้อมูลยา (Master Data)"])
-            with adm_t1:
+                
+                with adm_t1:
                     # 🌟 โค้ดชุดใหม่: รับเข้าครั้งเดียว กระจายหลายห้อง 🌟
                     st.markdown("#### 📝 บันทึกรับยาเข้า (กระจายได้หลายห้อง)")
                     
@@ -502,6 +504,7 @@ else:
                             st.rerun()
                         else:
                             st.error("⚠️ กรุณากรอกชื่อยา, Batch ID และเลือกสถานที่เก็บให้ครบถ้วน")
+                            
                 with adm_t2:
                     st.info("💡 แก้ไขตารางสต็อกโดยตรง (แก้ไขเสร็จอย่าลืมกดบันทึก)")
                     ed_s_df = stock.drop(columns=['Days_Left','Total_Value','BUD_Cold','Type','merge_key'], errors='ignore').copy()
@@ -511,6 +514,7 @@ else:
                     ed_s = st.data_editor(ed_s_df, num_rows="dynamic", use_container_width=True)
                     if st.button("💾 บันทึกสต็อกลงระบบ"): 
                         save_data(ed_s, 'stock'); st.success("บันทึกสำเร็จ!"); st.rerun()
+                        
                 with adm_t3:
                     st.info("💡 แก้ไขฐานข้อมูลรายการยาหลัก (ราคายา, อายุการใช้งาน)")
                     ed_d = st.data_editor(drugs, num_rows="dynamic", use_container_width=True)
