@@ -270,13 +270,18 @@ else:
                         thaw_sel = st.selectbox("เลือกยาที่ต้องการละลาย:", f_items.apply(lambda x: f"{x['Drug_Name']} (Batch: {x['Batch_ID']})", axis=1), index=None, key="thaw_sel")
                         if thaw_sel:
                             t_bid = thaw_sel.split("Batch: ")[1].split(")")[0]
-                            if st.button("💧 ยืนยันละลายยา", type="primary", use_container_width=True):
+                              if st.button("💧 ยืนยันละลายยา", type="primary", use_container_width=True):
                                 t_row = stock[stock['Batch_ID']==t_bid].iloc[0]
-                                bud = int(t_row['BUD_Thawed']) if str(t_row['BUD_Thawed']).isdigit() else 0
+                                
+                                # 💡 วิธีแก้: ใช้คำสั่ง .get() เพื่อความปลอดภัย ถ้าไม่มี BUD_Thawed ให้ไปดู BUD_Cold แทน
+                                bud_val = t_row.get('BUD_Thawed', t_row.get('BUD_Cold', 14)) # สมมติถ้าหาไม่เจอเลย ให้ค่าเริ่มต้นเป็น 14 วัน
+                                match = re.search(r'\d+', str(bud_val))
+                                bud = int(match.group()) if match else 14
+                                
                                 stock.loc[stock['Batch_ID']==t_bid, ['Status', 'Expiry_Date']] = ['Thawed', today + timedelta(days=bud)]
-                                save_data(stock, 'stock'); st.success("ละลายยาสำเร็จ!"); st.rerun()
-                    else: st.info("ไม่มียาแช่แข็งรอละลาย")
-                else: st.info("ไม่มียาแช่แข็งในระบบ")
+                                save_data(stock, 'stock')
+                                st.success("ละลายยาสำเร็จ!")
+                                st.rerun()
 
             st.markdown("<div class='custom-header'>📦 ภาพรวมสต็อกยาปัจจุบัน</div>", unsafe_allow_html=True)
             active_stock = filtered[filtered['Record_Status'] == 'In_Stock']
