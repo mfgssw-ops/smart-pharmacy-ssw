@@ -454,78 +454,89 @@ else:
 # === TAB 3: ADMIN ===
         with tab3:
             if st.session_state.role == 'admin':
-                adm_t1, adm_t2, adm_t3 = st.tabs(["📥 รับยาเข้า", "🛠️ แก้ไขสต็อก", "💊 ฐานข้อมูลยา (Master Data)"])
+                adm_t1, adm_t2, adm_t3, adm_t4 = st.tabs(["📥 รับยาเข้า", "🛠️ แก้ไขสต็อก", "💊 ฐานข้อมูลยา", "🚀 ดึงข้อมูล HOSxP"])
                 
                 with adm_t1:
-                    # 🌟 โค้ดชุดใหม่: รับเข้าครั้งเดียว กระจายหลายห้อง 🌟
                     st.markdown("#### 📝 บันทึกรับยาเข้า (กระจายได้หลายห้อง)")
                     
+                    # ส่วนของการล้างข้อมูล: ถ้าบันทึกสำเร็จ ระบบจะรีเซ็ตค่าในคีย์เหล่านี้
                     c1, c2 = st.columns(2)
-                    dn = c1.selectbox("ชื่อยา:", drugs['Drug_Name'].unique() if not drugs.empty else [], index=None)
-                    bn = c1.text_input("เลข Batch (ระบบจะแยกให้อัตโนมัติถ้าลงหลายห้อง):")
-                    pn = c2.date_input("วันผลิต/รับเข้า:", today)
+                    dn = c1.selectbox("ชื่อยา:", drugs['Drug_Name'].unique() if not drugs.empty else [], index=None, key="add_dn")
+                    bn = c1.text_input("เลข Batch:", key="add_bn")
+                    pn = c2.date_input("วันผลิต/รับเข้า:", today, key="add_pn")
                     
-                    # 1. เปลี่ยนเป็น Multi-select
-                    ln_list = st.multiselect("สถานที่เก็บ (เลือกได้มากกว่า 1 ห้อง):", active_locs, placeholder="-- เลือกห้อง (คลิกเลือกเพิ่มได้) --")
+                    ln_list = st.multiselect("สถานที่เก็บ:", active_locs, placeholder="-- เลือกห้อง --", key="add_ln")
                     
-                    # 2. สร้างช่องกรอกจำนวนแบบไดนามิก ตามห้องที่เลือก
                     q_dict = {}
                     if ln_list:
-                        st.markdown("<p style='font-size:15px; color:#2E8B57; font-weight:bold;'>👉 ระบุจำนวนที่ต้องการนำเข้าแต่ละห้อง:</p>", unsafe_allow_html=True)
+                        st.markdown("<p style='font-size:15px; color:#2E8B57; font-weight:bold;'>👉 ระบุจำนวนแต่ละห้อง:</p>", unsafe_allow_html=True)
                         cols = st.columns(len(ln_list))
                         for i, loc in enumerate(ln_list):
-                            q_dict[loc] = cols[i].number_input(f"จำนวนไป {loc}:", min_value=1, key=f"q_in_{loc}")
+                            q_dict[loc] = cols[i].number_input(f"{loc}:", min_value=1, key=f"q_in_{loc}")
                             
                     st.markdown("<br>", unsafe_allow_html=True)
                     
-                    # 3. ปุ่มบันทึก
                     if st.button("✅ บันทึกรับเข้าสต็อก", use_container_width=True, type="primary"):
                         if dn and bn and ln_list:
-                            dinfo = drugs[drugs['Drug_Name']==dn].iloc[0]
-                            dtype = str(dinfo.get('Type', 'Room')).strip()
-                            bud_val = dinfo.get('BUD_Frozen', 0) if dtype == 'Frozen' else (dinfo.get('BUD_Cold', 0) if dtype == 'Cold' else dinfo.get('BUD_Room', 0))
-                            match = re.search(r'\d+', str(bud_val))
-                            days = int(match.group()) if match else 30
-                            en = pn + timedelta(days=days)
-                            
-                            new_rows = []
-                            for loc in ln_list:
-                                qty = q_dict[loc]
-                                # 💡 ป้องกัน Error ซ้ำซ้อน: ถ้าเลือกหลายห้อง ให้เติมชื่อห้องต่อท้าย Batch 
-                                final_batch = f"{bn} ({loc})" if len(ln_list) > 1 else bn
+                            # 🌀 เพิ่ม Spinner แก้ปัญหาที่นึกว่าเครื่อง Hank
+                            with st.spinner('กำลังบันทึกข้อมูลลง Google Sheets...'):
+                                dinfo = drugs[drugs['Drug_Name']==dn].iloc[0]
+                                dtype = str(dinfo.get('Type', 'Room')).strip()
+                                # ดึง BUD_Thawed หรือ BUD_Cold มาคำนวณ
+                                bud_val = dinfo.get('BUD_Thawed', dinfo.get('BUD_Cold', 30))
+                                match = re.search(r'\d+', str(bud_val))
+                                days = int(match.group()) if match else 30
+                                en = pn + timedelta(days=days)
                                 
-                                new_r = {
-                                    'Date_Produced': pn.strftime('%Y-%m-%d'), 'Drug_Name': dn, 'Batch_ID': final_batch,
-                                    'Qty': qty, 'Expiry_Date': en.strftime('%Y-%m-%d'), 'Location': loc,
-                                    'Status': 'Frozen' if dtype == 'Frozen' else 'Active', 'Is_Saved': 'FALSE',
-                                    'Action_By': st.session_state.user_name,
-                                    'Record_Status': 'In_Stock'
-                                }
-                                new_rows.append(new_r)
+                                new_rows = []
+                                for loc in ln_list:
+                                    qty = q_dict[loc]
+                                    final_batch = f"{bn} ({loc})" if len(ln_list) > 1 else bn
+                                    
+                                    new_r = {
+                                        'Date_Produced': pn.strftime('%Y-%m-%d'), 'Drug_Name': dn, 'Batch_ID': final_batch,
+                                        'Qty': qty, 'Expiry_Date': en.strftime('%Y-%m-%d'), 'Location': loc,
+                                        'Status': 'Frozen' if dtype == 'Frozen' else 'Active', 'Is_Saved': 'FALSE',
+                                        'Action_By': st.session_state.user_name,
+                                        'Record_Status': 'In_Stock'
+                                    }
+                                    new_rows.append(new_r)
+                                    
+                                stock = pd.concat([stock, pd.DataFrame(new_rows)], ignore_index=True)
+                                save_data(stock, 'stock')
                                 
-                            stock = pd.concat([stock, pd.DataFrame(new_rows)], ignore_index=True)
-                            save_data(stock, 'stock')
-                            st.success(f"✅ บันทึกสำเร็จ! กระจายยา {dn} ไปยัง {len(ln_list)} ห้องเรียบร้อยแล้ว")
-                            st.rerun()
+                                # ✨ ขั้นตอนการล้างข้อมูลออกจากหน้าจอ ✨
+                                st.session_state.add_dn = None
+                                st.session_state.add_bn = ""
+                                st.session_state.add_ln = []
+                                # ลบค่าจำนวนรายห้องใน session_state ด้วย
+                                for loc in active_locs:
+                                    if f"q_in_{loc}" in st.session_state:
+                                        st.session_state[f"q_in_{loc}"] = 1
+
+                                st.success(f"✅ บันทึกสำเร็จ! ระบบล้างหน้าจอเพื่อรับยอดถัดไปแล้ว")
+                                st.rerun()
                         else:
-                            st.error("⚠️ กรุณากรอกชื่อยา, Batch ID และเลือกสถานที่เก็บให้ครบถ้วน")
+                            st.error("⚠️ กรุณากรอกข้อมูลให้ครบถ้วน")
                             
                 with adm_t2:
-                    st.info("💡 แก้ไขตารางสต็อกโดยตรง (แก้ไขเสร็จอย่าลืมกดบันทึก)")
+                    st.info("💡 แก้ไขสต็อกโดยตรง")
                     ed_s_df = stock.drop(columns=['Days_Left','Total_Value','BUD_Cold','Type','merge_key'], errors='ignore').copy()
                     ed_s_df['Date_Produced'] = ed_s_df['Date_Produced'].dt.strftime('%Y-%m-%d').fillna('')
                     ed_s_df['Expiry_Date'] = ed_s_df['Expiry_Date'].dt.strftime('%Y-%m-%d').fillna('')
-                    
                     ed_s = st.data_editor(ed_s_df, num_rows="dynamic", use_container_width=True)
                     if st.button("💾 บันทึกสต็อกลงระบบ"): 
                         save_data(ed_s, 'stock'); st.success("บันทึกสำเร็จ!"); st.rerun()
                         
                 with adm_t3:
-                    st.info("💡 แก้ไขฐานข้อมูลรายการยาหลัก (ราคายา, อายุการใช้งาน)")
+                    st.info("💡 แก้ไขฐานข้อมูลยา")
                     ed_d = st.data_editor(drugs, num_rows="dynamic", use_container_width=True)
                     if st.button("💾 บันทึกฐานข้อมูลยา"): 
                         save_data(ed_d, 'drugs'); st.success("อัปเดตข้อมูลยาสำเร็จ!"); st.rerun()
-            else:
-                st.warning("⛔ ขออภัยค่ะ เฉพาะสิทธิ์ผู้ดูแลระบบ (Admin) เท่านั้นที่เข้าใช้งานส่วนนี้ได้")
 
+                with adm_t4:
+                    # ส่วนนี้คงไว้ตามที่ตกลงกับ IT (ถ้ามี)
+                    st.write("ระบบเชื่อมต่อ HOSxP อยู่ในระหว่างปรึกษาทีม IT")
+            else:
+                st.warning("⛔ เฉพาะ Admin เท่านั้น")
 
