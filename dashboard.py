@@ -269,7 +269,7 @@ else:
                     if not f_items.empty:
                         thaw_sel = st.selectbox("เลือกยาที่ต้องการละลาย:", f_items.apply(lambda x: f"{x['Drug_Name']} (Batch: {x['Batch_ID']})", axis=1), index=None, key="thaw_sel")
                         if thaw_sel:
-                            t_bid = thaw_sel.split("Batch: ")[1].split(")")[0]
+                            t_bid = thaw_sel.split("Batch: ")[1][:-1]
                             if st.button("💧 ยืนยันละลายยา", type="primary", use_container_width=True):
                                 t_row = stock[stock['Batch_ID']==t_bid].iloc[0]
                                 
