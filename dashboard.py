@@ -273,14 +273,24 @@ else:
                             if st.button("💧 ยืนยันละลายยา", type="primary", use_container_width=True):
                                 t_row = stock[stock['Batch_ID']==t_bid].iloc[0]
                                 
-                                # 💡 วิธีแก้: ใช้คำสั่ง .get() เพื่อความปลอดภัย ถ้าไม่มี BUD_Thawed ให้ไปดู BUD_Cold แทน
-                                bud_val = t_row.get('BUD_Thawed', t_row.get('BUD_Cold', 14)) # สมมติถ้าหาไม่เจอเลย ให้ค่าเริ่มต้นเป็น 14 วัน
+                                # 1. หาอายุยา BUD หลังละลาย
+                                bud_val = t_row.get('BUD_Thawed', t_row.get('BUD_Cold', 14))
                                 match = re.search(r'\d+', str(bud_val))
                                 bud = int(match.group()) if match else 14
                                 
-                                stock.loc[stock['Batch_ID']==t_bid, ['Status', 'Expiry_Date']] = ['Thawed', today + timedelta(days=bud)]
+                                # 2. คำนวณแบบปกติ (วันนี้ + BUD ละลาย)
+                                normal_expiry = today + timedelta(days=bud)
+                                
+                                # 3. คำนวณแบบเพดานสูงสุด (วันหมดอายุเดิมตอนแช่แข็ง + BUD ละลาย)
+                                old_expiry = pd.to_datetime(t_row['Expiry_Date'])
+                                max_expiry = old_expiry + timedelta(days=bud)
+                                
+                                # 4. ✨ ความฉลาดของระบบ: เลือกวันที่ "หมดอายุก่อน" เพื่อความปลอดภัยสูงสุด
+                                final_expiry = min(normal_expiry, max_expiry)
+                                
+                                stock.loc[stock['Batch_ID']==t_bid, ['Status', 'Expiry_Date']] = ['Thawed', final_expiry]
                                 save_data(stock, 'stock')
-                                st.success("ละลายยาสำเร็จ!")
+                                st.success(f"ละลายยาสำเร็จ! ปรับวันหมดอายุใหม่เป็น {final_expiry.strftime('%d/%m/%Y')}")
                                 st.rerun()
 
             st.markdown("<div class='custom-header'>📦 ภาพรวมสต็อกยาปัจจุบัน</div>", unsafe_allow_html=True)
