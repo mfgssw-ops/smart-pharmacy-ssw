@@ -515,14 +515,14 @@ else:
                                 stock = pd.concat([stock, pd.DataFrame(new_rows)], ignore_index=True)
                                 save_data(stock, 'stock')
                                 
-                                # ✨ ขั้นตอนการล้างข้อมูลออกจากหน้าจอ ✨
-                                st.session_state.add_dn = None
-                                st.session_state.add_bn = ""
-                                st.session_state.add_ln = []
-                                # ลบค่าจำนวนรายห้องใน session_state ด้วย
+                               # ✨ ขั้นตอนการล้างข้อมูลออกจากหน้าจอแบบปลอดภัย 100% ✨
+                                keys_to_clear = ['add_dn', 'add_bn', 'add_pn', 'add_ln']
                                 for loc in active_locs:
-                                    if f"q_in_{loc}" in st.session_state:
-                                        st.session_state[f"q_in_{loc}"] = 1
+                                    keys_to_clear.append(f"q_in_{loc}")
+                                    
+                                for key in keys_to_clear:
+                                    if key in st.session_state:
+                                        del st.session_state[key]
 
                                 st.success(f"✅ บันทึกสำเร็จ! ระบบล้างหน้าจอเพื่อรับยอดถัดไปแล้ว")
                                 st.rerun()
