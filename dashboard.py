@@ -256,7 +256,7 @@ else:
             with col_alert2:
                 st.markdown("#### ❄️ แจ้งเตือนละลายยา")
                 if 'Type' in filtered.columns and not filtered.empty:
-                    f_items = filtered[(filtered['Type'] == 'Frozen') & (filtered['Status'] == 'Frozen')]
+                    f_items = filtered[(filtered['Type'] == 'Frozen') & (filtered['Status'] == 'Frozen')] & (filtered['Record_Status'] == 'In_Stock')]
                     
                     f_alerts = f_items[f_items['Days_Left'] <= 3].sort_values('Days_Left')
                     if not f_alerts.empty:
