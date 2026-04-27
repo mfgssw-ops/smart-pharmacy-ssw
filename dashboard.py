@@ -306,7 +306,8 @@ else:
                 st.altair_chart(c_chart, use_container_width=True)
                 
                 with st.expander("🔍 คลิกเพื่อดูรายละเอียดสต็อกยาเรียงตามวันหมดอายุ"):
-                    detail_df = active_stock[['Drug_Name', 'Batch_ID', 'Qty', 'Location', 'Status', 'Expiry_Date', 'Days_Left', 'Action_By']].copy()
+                    # 💡 แก้ไข: ดึงเฉพาะยาที่ Qty > 0 และเอาคอลัมน์ Action_By ออกไป เพื่อไม่ให้รกตา
+                    detail_df = active_stock[active_stock['Qty'] > 0][['Drug_Name', 'Batch_ID', 'Qty', 'Location', 'Status', 'Expiry_Date', 'Days_Left']].copy()
                     detail_df['Expiry_Date'] = detail_df['Expiry_Date'].apply(safe_fmt)
                     st.dataframe(detail_df.sort_values('Days_Left'), use_container_width=True, hide_index=True)
 
@@ -338,18 +339,19 @@ else:
                                     batch_qty = row['Qty']
                                     
                                     if batch_qty <= remain_to_cut:
-                                        # 💡 เปลี่ยนเป็น 'Dispensed' โดยไม่ลบจำนวนทิ้ง เพื่อเก็บมูลค่าประหยัด
                                         remain_to_cut -= batch_qty
                                         stock.loc[idx, 'Record_Status'] = 'Dispensed'
                                         stock.loc[idx, 'Action_By'] = f"จ่ายยาให้ผู้ป่วย ({st.session_state.user_name})"
                                     else:
-                                        # หักลบส่วนที่เหลือ และแยกบรรทัดใหม่ไปไว้ในหมวด Dispensed
+                                        # หักลบส่วนที่เหลือ 
                                         stock.loc[idx, 'Qty'] = batch_qty - remain_to_cut
-                                        stock.loc[idx, 'Action_By'] = f"จ่ายยาให้ผู้ป่วย ({st.session_state.user_name})"
+                                        # 💡 แก้ไข: บรรทัดนี้ไม่ต้องไปยุ่งกับ Action_By ของยาที่ยังเหลือในตู้ ปล่อยมันไว้เหมือนเดิม
                                         
+                                        # สร้างบรรทัดใหม่เฉพาะยาที่โดนจ่ายออกไปจริงๆ
                                         new_dispensed = stock.loc[idx].copy()
                                         new_dispensed['Qty'] = remain_to_cut
                                         new_dispensed['Record_Status'] = 'Dispensed'
+                                        new_dispensed['Action_By'] = f"จ่ายยาให้ผู้ป่วย ({st.session_state.user_name})"
                                         stock = pd.concat([stock, pd.DataFrame([new_dispensed])], ignore_index=True)
                                         remain_to_cut = 0
                                         
