@@ -369,7 +369,7 @@ else:
                     t_items = valid_stock[valid_stock['Location'] == t_from]
                     t_sel = st.selectbox("เลือกยาโอน:", t_items.apply(lambda x: f"{x['Drug_Name']} ({x['Batch_ID']}) [เหลือ {int(x['Qty'])}]", axis=1), index=None)
                     if t_sel:
-                        tbid = t_sel.split("(")[1].split(")")[0]
+                        tbid = t_sel.split(" (", 1)[1].rsplit(") [", 1)[0]
                         # ค้นหา Index เพื่อป้องกันการแก้ผิดบรรทัด
                         target_idx = t_items[t_items['Batch_ID'] == tbid].index[0]
                         tmax = int(stock.loc[target_idx, 'Qty'])
