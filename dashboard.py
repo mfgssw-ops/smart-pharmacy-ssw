@@ -392,21 +392,37 @@ else:
                     if not w_items.empty:
                         w_sel = st.selectbox("เลือกยาที่ต้องการทิ้ง:", w_items.apply(lambda x: f"{x['Drug_Name']} ({x['Batch_ID']}) [เหลือ {int(x['Qty'])}]", axis=1), index=None)
                         if w_sel:
-                            wbid = w_sel.split("(")[1].split(")")[0]
-                            target_idx = w_items[w_items['Batch_ID'] == wbid].index[0]
+                        wbid = w_sel.split("(")[1].split(")")[0]
+                        
+                        # 1. แปลงค่า Batch_ID ให้เป็นตัวอักษรและตัดช่องว่างทิ้ง
+                        matched_items = w_items[w_items['Batch_ID'].astype(str).str.strip() == str(wbid).strip()]
+                        
+                        # 2. ตรวจสอบว่าหาข้อมูลเจอหรือไม่
+                        if not matched_items.empty:
+                            target_idx = matched_items.index[0]
+                            
+                            # --- ส่วนการทำงานเดิมของคุณ ขยับเข้ามาอยู่ในนี้ ---
                             wmax = int(stock.loc[target_idx, 'Qty'])
-                            q_w = st.number_input("จำนวนทิ้ง:", 1, wmax, wmax)
+                            q_w = st.number_input("จำนวนที่ทิ้ง:", 1, wmax, wmax)
+                            
                             if st.button("🗑️ ยืนยันทิ้งยา"):
-                                if wmax - q_w <= 0: 
-                                    stock.loc[target_idx, ['Record_Status', 'Action_By']] = ['Disposed', f"ทิ้งโดย {st.session_state.user_name}"]
+                                if wmax - q_w <= 0:
+                                    stock.loc[target_idx, ['Record Status', 'Action By']] = ['Disposed', f"ทิ้งโดย {st.session_state.user_name}"]
                                 else:
                                     stock.loc[target_idx, 'Qty'] = wmax - q_w
                                     new_w = stock.loc[target_idx].copy()
-                                    new_w['Qty'] = q_w; new_w['Record_Status'] = 'Disposed'; new_w['Action_By'] = f"ทิ้งโดย {st.session_state.user_name}"
+                                    new_w['Qty'] = q_w
+                                    new_w['Record Status'] = 'Disposed'
+                                    new_w['Action By'] = f"ทิ้งโดย {st.session_state.user_name}"
                                     stock = pd.concat([stock, pd.DataFrame([new_w])], ignore_index=True)
-                                save_data(stock, 'stock'); st.error("บันทึกการทิ้งสำเร็จ"); st.rerun()
-                    else:
-                        st.success("✅ ไม่มียาหมดอายุในหน่วยงานนี้")
+                                
+                                st.success("✅ บันทึกตัดยาหมดอายุเรียบร้อย")
+                        
+                        else:
+                            # ถ้าหาไม่เจอ ให้แจ้งเตือนและหยุดการทำงานเพื่อไม่ให้แอปพัง
+                            import streamlit as st
+                            st.error(f"ไม่พบรหัส Batch ID: '{wbid}' ในฐานข้อมูล อาจเกิดจากการดึงรหัสจากข้อความคลาดเคลื่อน หรือข้อมูลถูกลบไปแล้ว")
+                            st.stop()
 
         # === TAB 2: EXECUTIVE ===
         with tab2:
