@@ -401,7 +401,8 @@ else:
                                 break
                                 
                         if target_idx is not None:
-                            wmax = int(stock.loc[target_idx, 'Qty'])
+                        wmax = int(stock.loc[target_idx, 'Qty'])
+                        if wmax > 0:
                             q_w = st.number_input("จำนวนที่ทิ้ง:", 1, wmax, wmax)
                             
                             if st.button("🗑️ ยืนยันทิ้งยา"):
@@ -416,9 +417,8 @@ else:
                                     stock = pd.concat([stock, pd.DataFrame([new_w])], ignore_index=True)
                                 
                                 st.success("✅ บันทึกตัดยาหมดอายุเรียบร้อย")
-                        else:
-                            # ป้องกันแอปพัง หากหาไม่เจอจริงๆ จะแสดงเตือนกล่องสีส้มแทน
-                            st.warning("⚠️ ไม่พบข้อมูลยาเวอร์ชันนี้ในระบบ กรุณากดรีเฟรชหน้าจอแล้วลองใหม่อีกครั้งค่ะ")
+                    else:
+                        st.warning("⚠️ ไม่พบข้อมูลยาเวอร์ชันนี้ในระบบ กรุณากดรีเฟรชหน้าจอแล้วลองใหม่อีกครั้งค่ะ")
 
         # === TAB 2: EXECUTIVE ===
         with tab2:
