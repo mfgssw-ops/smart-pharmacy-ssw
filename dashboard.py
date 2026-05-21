@@ -391,32 +391,32 @@ else:
                     w_items = valid_stock[(valid_stock['Location'] == w_l) & (valid_stock['Days_Left'] < 0)]
                     if not w_items.empty:
                         w_sel = st.selectbox("เลือกยาที่ต้องการทิ้ง:", w_items.apply(lambda x: f"{x['Drug_Name']} ({x['Batch_ID']}) [เหลือ {int(x['Qty'])}]", axis=1), index=None)
-                        if w_sel:
-                        wbid = w_sel.split("(")[1].split(")")[0]
-                        matched_items = w_items[w_items['Batch_ID'].astype(str).str.strip() == str(wbid).strip()]
-                        
-                        if not matched_items.empty:
-                            target_idx = matched_items.index[0]
-                            # กำหนดค่า wmax ตรงนี้ (ระบบจะได้รู้จัก)
-                            wmax = int(stock.loc[target_idx, 'Qty'])
-                            q_w = st.number_input("จำนวนที่ทิ้ง:", 1, wmax, wmax)
+                            if w_sel:
+                            wbid = w_sel.split("(")[1].split(")")[0]
+                            matched_items = w_items[w_items['Batch_ID'].astype(str).str.strip() == str(wbid).strip()]
                             
-                            if st.button("🗑️ ยืนยันทิ้งยา"):
-                                if wmax - q_w <= 0:
-                                    stock.loc[target_idx, ['Record Status', 'Action By']] = ['Disposed', f"ทิ้งโดย {st.session_state.user_name}"]
-                                else:
-                                    stock.loc[target_idx, 'Qty'] = wmax - q_w
-                                    new_w = stock.loc[target_idx].copy()
-                                    new_w['Qty'] = q_w
-                                    new_w['Record Status'] = 'Disposed'
-                                    new_w['Action By'] = f"ทิ้งโดย {st.session_state.user_name}"
-                                    stock = pd.concat([stock, pd.DataFrame([new_w])], ignore_index=True)
+                            if not matched_items.empty:
+                                target_idx = matched_items.index[0]
+                                # กำหนดค่า wmax ตรงนี้ (ระบบจะได้รู้จัก)
+                                wmax = int(stock.loc[target_idx, 'Qty'])
+                                q_w = st.number_input("จำนวนที่ทิ้ง:", 1, wmax, wmax)
                                 
-                                st.success("✅ บันทึกตัดยาหมดอายุเรียบร้อย")
-                        
-                        else:
-                            st.error(f"ไม่พบรหัส Batch ID: '{wbid}' ในฐานข้อมูล อาจถูกลบไปแล้ว")
-                            st.stop()
+                                if st.button("🗑️ ยืนยันทิ้งยา"):
+                                    if wmax - q_w <= 0:
+                                        stock.loc[target_idx, ['Record Status', 'Action By']] = ['Disposed', f"ทิ้งโดย {st.session_state.user_name}"]
+                                    else:
+                                        stock.loc[target_idx, 'Qty'] = wmax - q_w
+                                        new_w = stock.loc[target_idx].copy()
+                                        new_w['Qty'] = q_w
+                                        new_w['Record Status'] = 'Disposed'
+                                        new_w['Action By'] = f"ทิ้งโดย {st.session_state.user_name}"
+                                        stock = pd.concat([stock, pd.DataFrame([new_w])], ignore_index=True)
+                                    
+                                    st.success("✅ บันทึกตัดยาหมดอายุเรียบร้อย")
+                            
+                            else:
+                                st.error(f"ไม่พบรหัส Batch ID: '{wbid}' ในฐานข้อมูล อาจถูกลบไปแล้ว")
+                                st.stop()
 
         # === TAB 2: EXECUTIVE ===
         with tab2:
