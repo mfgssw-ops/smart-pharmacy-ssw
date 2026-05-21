@@ -392,7 +392,6 @@ else:
                     if not w_items.empty:
                         w_sel = st.selectbox("เลือกยาที่ต้องการทิ้ง:", w_items.apply(lambda x: f"{x['Drug_Name']} ({x['Batch_ID']}) [เหลือ {int(x['Qty'])}]", axis=1), index=None)
                         if w_sel:
-                        # วิธีใหม่แบบ 100%: วิ่งหาแถวในฐานข้อมูลที่สร้างข้อความตรงกับ Dropdown เป๊ะๆ
                         target_idx = None
                         for idx, r in w_items.iterrows():
                             # จำลองการสร้างข้อความรูปแบบเดียวกับที่โชว์ใน Dropdown
@@ -400,8 +399,7 @@ else:
                             if match_string == w_sel:
                                 target_idx = idx
                                 break
-                        
-                        # ตรวจสอบว่าเจอข้อมูลที่ตรงกันหรือไม่
+                                
                         if target_idx is not None:
                             wmax = int(stock.loc[target_idx, 'Qty'])
                             q_w = st.number_input("จำนวนที่ทิ้ง:", 1, wmax, wmax)
