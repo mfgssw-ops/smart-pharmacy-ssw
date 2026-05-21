@@ -391,34 +391,33 @@ else:
                     w_items = valid_stock[(valid_stock['Location'] == w_l) & (valid_stock['Days_Left'] < 0)]
                     if not w_items.empty:
                         w_sel = st.selectbox("เลือกยาที่ต้องการทิ้ง:", w_items.apply(lambda x: f"{x['Drug_Name']} ({x['Batch_ID']}) [เหลือ {int(x['Qty'])}]", axis=1), index=None)
-                        if w_sel:
+                    if w_sel:
                         target_idx = None
                         for idx, r in w_items.iterrows():
-                            # จำลองการสร้างข้อความรูปแบบเดียวกับที่โชว์ใน Dropdown
                             match_string = f"{r['Drug_Name']} ({r['Batch_ID']}) [เหลือ {r['Qty']}]"
                             if match_string == w_sel:
                                 target_idx = idx
                                 break
-                                
+                        
                         if target_idx is not None:
-                        wmax = int(stock.loc[target_idx, 'Qty'])
-                        if wmax > 0:
-                            q_w = st.number_input("จำนวนที่ทิ้ง:", 1, wmax, wmax)
-                            
-                            if st.button("🗑️ ยืนยันทิ้งยา"):
-                                if wmax - q_w <= 0:
-                                    stock.loc[target_idx, ['Record Status', 'Action By']] = ['Disposed', f"ทิ้งโดย {st.session_state.user_name}"]
-                                else:
-                                    stock.loc[target_idx, 'Qty'] = wmax - q_w
-                                    new_w = stock.loc[target_idx].copy()
-                                    new_w['Qty'] = q_w
-                                    new_w['Record Status'] = 'Disposed'
-                                    new_w['Action By'] = f"ทิ้งโดย {st.session_state.user_name}"
-                                    stock = pd.concat([stock, pd.DataFrame([new_w])], ignore_index=True)
+                            wmax = int(stock.loc[target_idx, 'Qty'])
+                            if wmax > 0:
+                                q_w = st.number_input("จำนวนที่ทิ้ง:", 1, wmax, wmax)
                                 
-                                st.success("✅ บันทึกตัดยาหมดอายุเรียบร้อย")
-                    else:
-                        st.warning("⚠️ ไม่พบข้อมูลยาเวอร์ชันนี้ในระบบ กรุณากดรีเฟรชหน้าจอแล้วลองใหม่อีกครั้งค่ะ")
+                                if st.button("🗑️ ยืนยันทิ้งยา"):
+                                    if wmax - q_w <= 0:
+                                        stock.loc[target_idx, ['Record Status', 'Action By']] = ['Disposed', f"ทิ้งโดย {st.session_state.user_name}"]
+                                    else:
+                                        stock.loc[target_idx, 'Qty'] = wmax - q_w
+                                        new_w = stock.loc[target_idx].copy()
+                                        new_w['Qty'] = q_w
+                                        new_w['Record Status'] = 'Disposed'
+                                        new_w['Action By'] = f"ทิ้งโดย {st.session_state.user_name}"
+                                        stock = pd.concat([stock, pd.DataFrame([new_w])], ignore_index=True)
+                                    
+                                    st.success("✅ บันทึกตัดยาหมดอายุเรียบร้อย")
+                        else:
+                            st.warning("⚠️ ไม่พบข้อมูลยาเวอร์ชันนี้ในระบบ กรุณากดรีเฟรชหน้าจอแล้วลองใหม่อีกครั้งค่ะ")
 
         # === TAB 2: EXECUTIVE ===
         with tab2:
