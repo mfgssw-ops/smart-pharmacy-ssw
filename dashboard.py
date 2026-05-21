@@ -392,8 +392,8 @@ else:
                     if not w_items.empty:
                         w_sel = st.selectbox("เลือกยาที่ต้องการทิ้ง:", w_items.apply(lambda x: f"{x['Drug_Name']} ({x['Batch_ID']}) [เหลือ {int(x['Qty'])}]", axis=1), index=None)
                             if w_sel:
-                            wbid = w_sel.split("(")[1].split(")")[0]
-                            matched_items = w_items[w_items['Batch_ID'].astype(str).str.strip() == str(wbid).strip()]
+                                wbid = w_sel.split("(")[1].split(")")[0]
+                                matched_items = w_items[w_items['Batch_ID'].astype(str).str.strip() == str(wbid).strip()]
                             
                             if not matched_items.empty:
                                 target_idx = matched_items.index[0]
