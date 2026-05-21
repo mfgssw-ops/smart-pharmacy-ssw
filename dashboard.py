@@ -392,18 +392,17 @@ else:
                     if not w_items.empty:
                         w_sel = st.selectbox("เลือกยาที่ต้องการทิ้ง:", w_items.apply(lambda x: f"{x['Drug_Name']} ({x['Batch_ID']}) [เหลือ {int(x['Qty'])}]", axis=1), index=None)
                         if w_sel:
-                        # 1. ตัดคำว่า " [เหลือ " ออกก่อน จะได้ข้อความแค่ "ชื่อยา (Batch_ID)"
-                        temp_str = w_sel.split(" [เหลือ ")[0]
+                        # วิธีใหม่แบบ 100%: วิ่งหาแถวในฐานข้อมูลที่สร้างข้อความตรงกับ Dropdown เป๊ะๆ
+                        target_idx = None
+                        for idx, r in w_items.iterrows():
+                            # จำลองการสร้างข้อความรูปแบบเดียวกับที่โชว์ใน Dropdown
+                            match_string = f"{r['Drug_Name']} ({r['Batch_ID']}) [เหลือ {r['Qty']}]"
+                            if match_string == w_sel:
+                                target_idx = idx
+                                break
                         
-                        # 2. หาตำแหน่งวงเล็บเปิดตัวแรก แล้วดึงข้อความข้างในออกมาทั้งหมด
-                        wbid = temp_str[temp_str.find("(") + 1 : -1]
-                        
-                        # 3. นำ wbid ที่ได้เต็มๆ ไปค้นหา
-                        matched_items = w_items[w_items['Batch_ID'].astype(str).str.strip() == str(wbid).strip()]
-                        
-                        if not matched_items.empty:
-                            target_idx = matched_items.index[0]
-                            # กำหนดค่า wmax ตรงนี้ (ระบบจะได้รู้จัก)
+                        # ตรวจสอบว่าเจอข้อมูลที่ตรงกันหรือไม่
+                        if target_idx is not None:
                             wmax = int(stock.loc[target_idx, 'Qty'])
                             q_w = st.number_input("จำนวนที่ทิ้ง:", 1, wmax, wmax)
                             
@@ -419,10 +418,9 @@ else:
                                     stock = pd.concat([stock, pd.DataFrame([new_w])], ignore_index=True)
                                 
                                 st.success("✅ บันทึกตัดยาหมดอายุเรียบร้อย")
-                        
                         else:
-                            st.error(f"ไม่พบรหัส Batch ID: '{wbid}' ในฐานข้อมูล อาจถูกลบไปแล้ว")
-                            st.stop()
+                            # ป้องกันแอปพัง หากหาไม่เจอจริงๆ จะแสดงเตือนกล่องสีส้มแทน
+                            st.warning("⚠️ ไม่พบข้อมูลยาเวอร์ชันนี้ในระบบ กรุณากดรีเฟรชหน้าจอแล้วลองใหม่อีกครั้งค่ะ")
 
         # === TAB 2: EXECUTIVE ===
         with tab2:
