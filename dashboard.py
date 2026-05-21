@@ -392,8 +392,14 @@ else:
                     if not w_items.empty:
                         w_sel = st.selectbox("เลือกยาที่ต้องการทิ้ง:", w_items.apply(lambda x: f"{x['Drug_Name']} ({x['Batch_ID']}) [เหลือ {int(x['Qty'])}]", axis=1), index=None)
                         if w_sel:
-                            wbid = w_sel.split("(")[1].split(")")[0]
-                            matched_items = w_items[w_items['Batch_ID'].astype(str).str.strip() == str(wbid).strip()]
+                        # 1. ตัดคำว่า " [เหลือ " ออกก่อน จะได้ข้อความแค่ "ชื่อยา (Batch_ID)"
+                        temp_str = w_sel.split(" [เหลือ ")[0]
+                        
+                        # 2. หาตำแหน่งวงเล็บเปิดตัวแรก แล้วดึงข้อความข้างในออกมาทั้งหมด
+                        wbid = temp_str[temp_str.find("(") + 1 : -1]
+                        
+                        # 3. นำ wbid ที่ได้เต็มๆ ไปค้นหา
+                        matched_items = w_items[w_items['Batch_ID'].astype(str).str.strip() == str(wbid).strip()]
                         
                         if not matched_items.empty:
                             target_idx = matched_items.index[0]
