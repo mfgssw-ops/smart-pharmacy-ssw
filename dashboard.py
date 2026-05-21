@@ -398,7 +398,7 @@ else:
                         matched_items = w_items[w_items['Batch_ID'].astype(str).str.strip() == str(wbid).strip()]
                         
                         # 2. ตรวจสอบว่าหาข้อมูลเจอหรือไม่
-                        if not matched_items.empty:
+                            if not matched_items.empty:
                             target_idx = matched_items.index[0]
                             
                             # --- ส่วนการทำงานเดิมของคุณ ขยับเข้ามาอยู่ในนี้ ---
