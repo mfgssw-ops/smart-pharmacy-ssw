@@ -392,18 +392,12 @@ else:
                     if not w_items.empty:
                         w_sel = st.selectbox("เลือกยาที่ต้องการทิ้ง:", w_items.apply(lambda x: f"{x['Drug_Name']} ({x['Batch_ID']}) [เหลือ {int(x['Qty'])}]", axis=1), index=None)
                         if w_sel:
-                        wbid = w_sel.split("(")[1].split(")")[0]
-                        
-                        # 1. แปลงค่า Batch_ID ให้เป็นตัวอักษรและตัดช่องว่างทิ้ง
-                        matched_items = w_items[w_items['Batch_ID'].astype(str).str.strip() == str(wbid).strip()]
-                        
-                        # 2. ตรวจสอบว่าหาข้อมูลเจอหรือไม่
+                            wbid = w_sel.split("(")[1].split(")")[0]
+                            matched_items = w_items[w_items['Batch_ID'].astype(str).str.strip() == str(wbid).strip()]
                             if not matched_items.empty:
-                            target_idx = matched_items.index[0]
-                            
-                            # --- ส่วนการทำงานเดิมของคุณ ขยับเข้ามาอยู่ในนี้ ---
-                            wmax = int(stock.loc[target_idx, 'Qty'])
-                            q_w = st.number_input("จำนวนที่ทิ้ง:", 1, wmax, wmax)
+                                target_idx = matched_items.index[0]                            
+                                wmax = int(stock.loc[target_idx, 'Qty'])
+                                q_w = st.number_input("จำนวนที่ทิ้ง:", 1, wmax, wmax)
                             
                             if st.button("🗑️ ยืนยันทิ้งยา"):
                                 if wmax - q_w <= 0:
