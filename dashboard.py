@@ -416,7 +416,7 @@ else:
                         
                         else:
                             st.error(f"ไม่พบรหัส Batch ID: '{wbid}' ในฐานข้อมูล อาจถูกลบไปแล้ว")
-                                st.stop()
+                            st.stop()
 
         # === TAB 2: EXECUTIVE ===
         with tab2:
