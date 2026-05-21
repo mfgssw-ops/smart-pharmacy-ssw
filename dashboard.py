@@ -392,12 +392,14 @@ else:
                     if not w_items.empty:
                         w_sel = st.selectbox("เลือกยาที่ต้องการทิ้ง:", w_items.apply(lambda x: f"{x['Drug_Name']} ({x['Batch_ID']}) [เหลือ {int(x['Qty'])}]", axis=1), index=None)
                         if w_sel:
-                            wbid = w_sel.split("(")[1].split(")")[0]
-                            matched_items = w_items[w_items['Batch_ID'].astype(str).str.strip() == str(wbid).strip()]
-                            if not matched_items.empty:
-                                target_idx = matched_items.index[0]                            
-                                wmax = int(stock.loc[target_idx, 'Qty'])
-                                q_w = st.number_input("จำนวนที่ทิ้ง:", 1, wmax, wmax)
+                        wbid = w_sel.split("(")[1].split(")")[0]
+                        matched_items = w_items[w_items['Batch_ID'].astype(str).str.strip() == str(wbid).strip()]
+                        
+                        if not matched_items.empty:
+                            target_idx = matched_items.index[0]
+                            # กำหนดค่า wmax ตรงนี้ (ระบบจะได้รู้จัก)
+                            wmax = int(stock.loc[target_idx, 'Qty'])
+                            q_w = st.number_input("จำนวนที่ทิ้ง:", 1, wmax, wmax)
                             
                             if st.button("🗑️ ยืนยันทิ้งยา"):
                                 if wmax - q_w <= 0:
@@ -413,9 +415,7 @@ else:
                                 st.success("✅ บันทึกตัดยาหมดอายุเรียบร้อย")
                         
                         else:
-                            # ถ้าหาไม่เจอ ให้แจ้งเตือนและหยุดการทำงานเพื่อไม่ให้แอปพัง
-                            import streamlit as st
-                            st.error(f"ไม่พบรหัส Batch ID: '{wbid}' ในฐานข้อมูล อาจเกิดจากการดึงรหัสจากข้อความคลาดเคลื่อน หรือข้อมูลถูกลบไปแล้ว")
+                            st.error(f"ไม่พบรหัส Batch ID: '{wbid}' ในฐานข้อมูล อาจถูกลบไปแล้ว")
                             st.stop()
 
         # === TAB 2: EXECUTIVE ===
