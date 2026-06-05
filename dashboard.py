@@ -391,11 +391,11 @@ else:
                     w_items = valid_stock[(valid_stock['Location'] == w_l) & (valid_stock['Days_Left'] < 0)]
                     if not w_items.empty:
                         w_sel = st.selectbox("เลือกยาที่ต้องการทิ้ง:", w_items.apply(lambda x: f"{x['Drug_Name']} ({x['Batch_ID']}) [เหลือ {int(x['Qty'])}]", axis=1), index=None)
-                    if w_sel:
-                            # 💡 แก้ไข: ดึงเลข Batch ที่มีวงเล็บซ้อนกันแบบแม่นยำ 100% สำหรับหมวดทิ้งยา
-                            wbid = w_sel.split(" (", 1)[1].rsplit(") [", 1)[0]
-                            
-                            target_idx = w_items[w_items['Batch_ID'] == wbid].index[0]
+                        if w_sel:
+                                # 💡 แก้ไข: ดึงเลข Batch ที่มีวงเล็บซ้อนกันแบบแม่นยำ 100% สำหรับหมวดทิ้งยา
+                                wbid = w_sel.split(" (", 1)[1].rsplit(") [", 1)[0]
+                                
+                                target_idx = w_items[w_items['Batch_ID'] == wbid].index[0]
                         
                         if target_idx is not None:
                             wmax = int(stock.loc[target_idx, 'Qty'])
